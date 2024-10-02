@@ -6,13 +6,14 @@ from collections import defaultdict
 import dotenv
 import logging
 from multiprocessing import Pool, cpu_count
+import time
 
 # Load environment variables securely
 dotenv.load_dotenv()
 
 # Gmail credentials from environment variables
-EMAIL = os.getenv("GMAIL_USER")
-PASSWORD = os.getenv("GMAIL_PASS")
+EMAIL = os.getenv("username")
+PASSWORD = os.getenv("password")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,7 +22,24 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def clean(text):
     return "".join(c if c.isalnum() else "_" for c in text)
 
+# Retry decorator to handle connection resets
+def retry_on_failure(max_retries=3, wait_time=5):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except (imaplib.IMAP4.error, ConnectionResetError) as e:
+                    retries += 1
+                    logging.warning(f"Connection error: {e}. Retrying {retries}/{max_retries}...")
+                    time.sleep(wait_time)  # Wait before retrying
+            raise Exception("Max retries exceeded")
+        return wrapper
+    return decorator
+
 # Function to fetch and process an email, establishing a new IMAP connection for each worker
+@retry_on_failure(max_retries=3, wait_time=5)
 def process_email_batch(email_ids):
     imap_host = "imap.gmail.com"
     unsubscribe_count = 0
@@ -29,7 +47,7 @@ def process_email_batch(email_ids):
     
     # Each worker creates its own IMAP connection
     try:
-        mail = imaplib.IMAP4_SSL(imap_host)
+        mail = imaplib.IMAP4_SSL(imap_host, timeout=30)  # Set a longer timeout
         mail.login(EMAIL, PASSWORD)
         mail.select("inbox")
 
@@ -58,7 +76,8 @@ def process_email_batch(email_ids):
         logging.error(f"IMAP connection failed: {e}")
     
     finally:
-        mail.logout()  # Ensure the worker logs out properly
+        if 'mail' in locals():
+            mail.logout()  # Ensure the worker logs out properly
         logging.info("IMAP connection closed after batch processing.")
 
     return sender_count, unsubscribe_count
@@ -105,17 +124,23 @@ def process_emails_in_batches(email_ids):
 
     return sender_count, unsubscribe_count
 
+# Retry the IMAP login
+@retry_on_failure(max_retries=3, wait_time=5)
+def login_to_imap():
+    imap_host = "imap.gmail.com"
+    mail = imaplib.IMAP4_SSL(imap_host, timeout=30)  # Set a longer timeout
+    mail.login(EMAIL, PASSWORD)
+    return mail
+
 # Function to read emails and count senders and 'Unsubscribe' occurrences
 def read_and_count_emails():
-    imap_host = "imap.gmail.com"
     sender_count = defaultdict(int)
     unsubscribe_count = 0
 
     # Connect to the Gmail IMAP server
     try:
-        mail = imaplib.IMAP4_SSL(imap_host)
-        mail.login(EMAIL, PASSWORD)
-    except imaplib.IMAP4.error as e:
+        mail = login_to_imap()
+    except Exception as e:
         logging.error(f"IMAP login failed: {e}")
         return
 
