@@ -1,0 +1,77 @@
+// Create a widget instance
+let widget = new ListWidget()
+
+// Set the widget background color (light tone for a calming effect)
+widget.backgroundColor = new Color("#F3F4F6") // Soft gray background
+
+// List of quotes and their references
+let quotes = [
+    { 
+        text: "The strongest among you is the one who controls his anger.", 
+        reference: "Prophet Muhammad (peace be upon him), Sahih Bukhari" 
+    },
+    { 
+        text: "A good man treats women with respect and kindness.", 
+        reference: "Prophet Muhammad (peace be upon him), Tirmidhi" 
+    },
+    { 
+        text: "The best among you are those who are best to their families.", 
+        reference: "Prophet Muhammad (peace be upon him), Sunan Ibn Majah" 
+    },
+    { 
+        text: "Speak good or remain silent.", 
+        reference: "Prophet Muhammad (peace be upon him), Sahih Bukhari" 
+    },
+    { 
+        text: "Be humble, for the one who humbles himself for Allah is elevated by Allah.", 
+        reference: "Prophet Muhammad (peace be upon him), Sahih Muslim" 
+    },
+    { 
+        text: "The most beloved of deeds to Allah is the one done consistently, even if small.", 
+        reference: "Prophet Muhammad (peace be upon him), Sahih Bukhari" 
+    },
+    { 
+        text: "Strength is not in physical power, but in self-control.", 
+        reference: "Prophet Muhammad (peace be upon him), Sahih Bukhari" 
+    },
+    { 
+        text: "Be patient, for patience is the key to success in this life and the hereafter.", 
+        reference: "Quran 2:153" 
+    },
+    { 
+        text: "Indeed, in the remembrance of Allah do hearts find rest.", 
+        reference: "Quran 13:28" 
+    },
+    { 
+        text: "Forgive others, as forgiveness is a mark of a great soul.", 
+        reference: "Prophet Muhammad (peace be upon him), Musnad Ahmad" 
+    }
+]
+
+// Select a quote based on the day of the year
+let today = new Date()
+let dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24)
+let quoteOfDay = quotes[dayOfYear % quotes.length] // Cycle through quotes
+
+// Add top spacer to center-align the content vertically
+widget.addSpacer()
+
+// Add the daily quote to the widget
+let title = widget.addText(quoteOfDay.text)
+title.textColor = new Color("#333333") // Dark gray text for readability
+title.font = new Font("Georgia-Bold", 16) // Elegant serif font for an inspiring look
+title.centerAlignText() // Center-align the text
+
+// Add the reference below the quote
+let reference = widget.addText(`― ${quoteOfDay.reference}`)
+reference.textColor = new Color("#555555") // Softer gray for contrast
+reference.font = Font.italicSystemFont(12)
+reference.centerAlignText()
+
+// Add bottom spacer to complete vertical centering
+widget.addSpacer()
+
+// Finish by setting the widget for display
+Script.setWidget(widget)
+widget.presentMedium()
+Script.complete()
